@@ -22,6 +22,7 @@
 #include "include/cheatman.h"
 #include "include/sound.h"
 #include "include/guigame.h"
+#include "include/texcache.h"
 
 #include <limits.h>
 #include <stdlib.h>
@@ -174,16 +175,6 @@ void guiEnd()
         gBackgroundTex.Mem = NULL;
     }
 
-    if (gTheme && gTheme->loadingIcon) {
-        // Free loading icons if allocated by theme
-        for (int i = 0; i < (gTheme->loadingIconCount > 0 ? gTheme->loadingIconCount : 1); i++) {
-            if (gTheme->loadingIcons[i].Mem) {
-                free(gTheme->loadingIcons[i].Mem);
-                gTheme->loadingIcons[i].Mem = NULL;
-            }
-        }
-    }
-
     DeleteSema(gSemaId);
     DeleteSema(gGUILockSemaId);
 }
@@ -204,10 +195,7 @@ void guiStartFrame(void)
     rmStartFrame();
     guiFrameId++;
 
-    // Increment LRU frame counters for all caches
-    for (int i = 0; i < g_lru_cache_count; i++) {
-        g_lru_caches[i].frame_counter++;
-    }
+    cacheAdvanceFrame();
 }
 
 void guiEndFrame(void)
@@ -1087,11 +1075,13 @@ static void guiHandleDeferredOps(void)
     WaitSema(gSemaId);
     while (gUpdateList) {
 
-        guiHandleOp(gUpdateList->item);
+        struct gui_update_t *op = gUpdateList->item;
+        guiHandleOp(op);
 
         struct gui_update_list_t *td = gUpdateList;
         gUpdateList = gUpdateList->next;
 
+        free(op);
         free(td);
 
         gCompletedOps++;
@@ -1654,6 +1644,11 @@ struct gui_update_t *guiOpCreate(gui_op_type_t type)
     memset(op, 0, sizeof(struct gui_update_t));
     op->type = type;
     return op;
+}
+
+void guiDestroyOp(struct gui_update_t *op)
+{
+    free(op);
 }
 
 void guiUpdateScrollSpeed(void)

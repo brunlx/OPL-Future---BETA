@@ -39,7 +39,6 @@
 //        Use newlib's 'stat' to get GMT time.
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h> // iox_stat_t
-int configGetStat(config_set_t *configSet, iox_stat_t *stat);
 
 #include <unistd.h>
 #ifdef PADEMU
@@ -1695,21 +1694,22 @@ void deinit(int exception, int modeSelected)
 
 void setDefaultColors(void)
 {
-    gDefaultBgColor[0] = 0x28;
-    gDefaultBgColor[1] = 0xC5;
-    gDefaultBgColor[2] = 0xF9;
+    /* Futuristic dark HUD palette — low GPU cost, high contrast on PS2 */
+    gDefaultBgColor[0] = 0x06;
+    gDefaultBgColor[1] = 0x0A;
+    gDefaultBgColor[2] = 0x14;
 
-    gDefaultTextColor[0] = 0xFF;
-    gDefaultTextColor[1] = 0xFF;
-    gDefaultTextColor[2] = 0xFF;
+    gDefaultTextColor[0] = 0xE4;
+    gDefaultTextColor[1] = 0xEC;
+    gDefaultTextColor[2] = 0xF8;
 
     gDefaultSelTextColor[0] = 0x00;
-    gDefaultSelTextColor[1] = 0xAE;
+    gDefaultSelTextColor[1] = 0xD8;
     gDefaultSelTextColor[2] = 0xFF;
 
-    gDefaultUITextColor[0] = 0x58;
-    gDefaultUITextColor[1] = 0x68;
-    gDefaultUITextColor[2] = 0xB4;
+    gDefaultUITextColor[0] = 0x7A;
+    gDefaultUITextColor[1] = 0x9A;
+    gDefaultUITextColor[2] = 0xC0;
 }
 
 static void setDefaults(void)

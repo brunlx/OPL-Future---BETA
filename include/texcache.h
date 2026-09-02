@@ -43,6 +43,9 @@ typedef struct
  */
 void cacheInit();
 
+/** Advances per-frame LRU bookkeeping. */
+void cacheAdvanceFrame();
+
 /** Terminates the cache. Does nothing currently. Users of this code have to destroy caches via cacheDestroyCache
  */
 void cacheEnd();

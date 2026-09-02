@@ -168,7 +168,6 @@ int sfxInit(int bootSnd)
     char full_path[256];
     int ret, loaded;
     int thmSfxEnabled = 0;
-    int i = 1;
 
     if (!audio_initialized) {
         LOG("SFX: %s: ERROR: not initialized!\n", __FUNCTION__);
@@ -195,8 +194,7 @@ int sfxInit(int bootSnd)
     }
 
     loaded = 0;
-    i = bootSnd ? 0 : 1;
-    for (; i < SFX_COUNT; i++) {
+    for (int i = 0; i < SFX_COUNT; i++) {
         if (thmSfxEnabled) {
             snprintf(full_path, sizeof(full_path), "%s/%s", sound_path, sfx_files[i].name);
             ret = sfxRead(full_path, &sfx_files[i]);

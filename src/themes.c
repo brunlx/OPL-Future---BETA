@@ -852,9 +852,13 @@ static void drawItemsList(struct menu_list *menu, struct submenu_list *item, con
         int others = 0;
         u64 color;
         while (ps && (others++ < itemsList->displayedItems)) {
-            if (ps == item)
+            int selected = (ps == item);
+            if (selected) {
                 color = gTheme->selTextColor;
-            else
+                int barW = (elem->width > 0 && elem->width != DIM_INF) ? elem->width : 360;
+                rmDrawRect(posX - 4, posY - 1, barW, MENU_ITEM_HEIGHT - 2,
+                           GS_SETREG_RGBA(gDefaultSelTextColor[0], gDefaultSelTextColor[1], gDefaultSelTextColor[2], 0x28));
+            } else
                 color = elem->color;
 
             if (itemsList->decoratorImage) {

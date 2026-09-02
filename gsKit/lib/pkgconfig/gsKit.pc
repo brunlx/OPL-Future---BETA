@@ -1,0 +1,19 @@
+prefix=${pcfiledir}/../..
+exec_prefix=${prefix}
+libdir=${prefix}/lib
+sharedlibdir=${exec_prefix}/lib
+includedir=${exec_prefix}/include
+
+exinfo_git_tag=v0.0.0
+exinfo_git_commit_hash=43122eb96289167975b56caa45beb71eb8684fa2
+exinfo_git_commit_timestamp=1784188098
+exinfo_git_refs=HEAD,master,origin/master,origin/HEAD
+exinfo_git_remote_url=https://github.com/ps2dev/gsKit.git
+
+Name: gsKit
+Description: gsKit graphics library for Sony Playstation 2
+Version: 0.0.0
+
+Requires: 
+Libs: -L${libdir} -lgskit -ldmakit -lgskit_toolkit
+Cflags: -I${includedir} 

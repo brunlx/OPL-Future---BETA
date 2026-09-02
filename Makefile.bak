@@ -36,12 +36,6 @@ IGS ?= $(EXTRA_FEATURES)
 #Enables/disables pad emulator
 PADEMU ?= 0
 
-# Path to gsKit (built via: cmake from https://github.com/ps2dev/gsKit)
-GSKIT ?= $(CURDIR)/gsKit
-
-# Host ps2-packer directory (must contain ps2-packer binary and .so packers)
-PS2_PACKER_DIR ?= /tmp/ps2-packer-master
-
 #Enables/disables building of an edition of OPL that will support the DTL-T10000 (SDK v2.3+)
 DTL_T10000 ?= 0
 
@@ -383,7 +377,7 @@ $(EE_BIN_STRIPPED): $(EE_BIN)
 
 $(EE_BIN_PACKED): $(EE_BIN_STRIPPED)
 	echo "Compressing..."
-	(cd $(PS2_PACKER_DIR) && ./ps2-packer $< $@) > /dev/null
+	ps2-packer $< $@ > /dev/null
 
 $(EE_VPKD).ELF: $(EE_BIN_PACKED)
 	cp -f $< $@

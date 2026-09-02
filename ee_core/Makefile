@@ -22,7 +22,7 @@ EE_OBJS = main.o syshook.o iopmgr.o modmgr.o util.o patches.o patches_asm.o \
 MAPFILE = ee_core.map
 
 EE_INCS := -I$(PS2SDK)/ee/include -I$(PS2SDK)/common/include -I$(PS2SDK)/ports/include -Iinclude -I.
-EE_CFLAGS = -D_EE -Os -G0 -Wall $(EE_INCS)
+EE_CFLAGS += -D_EE -Os -G0 -Wall $(EE_INCS)
 
 ifeq ($(EESIO_DEBUG),1)
     EE_CFLAGS += -D__EESIO_DEBUG

@@ -267,17 +267,32 @@ int HttpSendGetRequest(s32 HttpSocket, const char *UserAgent, const char *host, 
         "Dec"};
     char buffer[512];
     int result, length;
+    int offset;
 
-    sprintf(buffer, "GET %s HTTP/1.1\r\n"
-                    "Accept: text/html, */*\r\n"
-                    "User-Agent: %s\r\n"
-                    "Host: %s\r\n",
-            uri, UserAgent, host);
+    offset = snprintf(buffer, sizeof(buffer),
+                      "GET %s HTTP/1.1\r\n"
+                      "Accept: text/html, */*\r\n"
+                      "User-Agent: %s\r\n"
+                      "Host: %s\r\n",
+                      uri, UserAgent, host);
+    if (offset < 0 || offset >= (int)sizeof(buffer))
+        return -1;
 
-    if (*mode == HTTP_CMODE_PERSISTENT)
-        strcat(buffer, "Proxy-Connection: Keep-Alive\r\n");
-    if (mtime != NULL)
-        sprintf(&buffer[strlen(buffer)], "If-Modified-Since: %s, %02u %s %04u %02u:%02u:%02u GMT\r\n", GetDayInWeek(mtime), mtime[2] + 1, months[mtime[1]], 2000 + mtime[0], mtime[3], mtime[4], mtime[5]);
+    if (*mode == HTTP_CMODE_PERSISTENT) {
+        if (offset + 32 >= (int)sizeof(buffer))
+            return -1;
+        offset += snprintf(buffer + offset, sizeof(buffer) - offset, "Proxy-Connection: Keep-Alive\r\n");
+    }
+    if (mtime != NULL) {
+        if (offset + 64 >= (int)sizeof(buffer))
+            return -1;
+        offset += snprintf(buffer + offset, sizeof(buffer) - offset,
+                           "If-Modified-Since: %s, %02u %s %04u %02u:%02u:%02u GMT\r\n",
+                           GetDayInWeek(mtime), mtime[2] + 1, months[mtime[1]], 2000 + mtime[0],
+                           mtime[3], mtime[4], mtime[5]);
+    }
+    if (offset + 4 >= (int)sizeof(buffer))
+        return -1;
     strcat(buffer, "\r\n");
 
     length = strlen(buffer);

@@ -6,8 +6,21 @@
 #include "include/util.h"
 #include "include/renderman.h"
 
+#include <stdint.h>
+#include <delaythread.h>
+
 #define TEXCACHE_POOL_SIZE 32
 #define TEXCACHE_MAX_ENTRIES 128
+
+typedef struct {
+    char *value;
+    image_cache_t *cache;
+    cache_entry_t *entry;
+    item_list_t *list;
+    int cacheUID;
+} load_image_request_t;
+
+static void cacheLoadImage(void *data);
 
 // Pool de requisições pré-alocado (evita malloc/free no hot path)
 typedef struct {
@@ -56,6 +69,12 @@ static load_image_request_t *request_pool_alloc(void)
 
 static void request_pool_free(load_image_request_t *req)
 {
+    if (!req)
+        return;
+
+    free(req->value);
+    req->value = NULL;
+
     int idx = req - g_req_pool.requests;
     if (idx >= 0 && idx < TEXCACHE_POOL_SIZE && g_req_pool.used[idx]) {
         g_req_pool.used[idx] = 0;
@@ -83,7 +102,8 @@ static void lru_move_to_front(lru_cache_t *lru, lru_node_t *node)
     node->prev = &lru->head;
     lru->head.next->prev = node;
     lru->head.next = node;
-    node->lastUsed = lru->frame_counter;
+    if (node->entry)
+        node->entry->lastUsed = lru->frame_counter;
 }
 
 static void lru_add(lru_cache_t *lru, cache_entry_t *entry)
@@ -91,7 +111,8 @@ static void lru_add(lru_cache_t *lru, cache_entry_t *entry)
     if (lru->node_count >= TEXCACHE_MAX_ENTRIES) return;
     lru_node_t *node = &lru->nodes[lru->node_count++];
     node->entry = entry;
-    node->lastUsed = lru->frame_counter;
+    if (entry)
+        entry->lastUsed = lru->frame_counter;
     lru_move_to_front(lru, node);
 }
 
@@ -106,7 +127,8 @@ static cache_entry_t *lru_evict(lru_cache_t *lru)
     lru_node_t *node = lru->tail.prev->prev;
 
     while (node != &lru->head) {
-        if (node->lastUsed < oldest->lastUsed) {
+        if (node->entry && oldest->entry &&
+            node->entry->lastUsed < oldest->entry->lastUsed) {
             oldest = node;
         }
         node = node->prev;
@@ -129,6 +151,12 @@ void cacheInit()
 
 void cacheEnd()
 {
+}
+
+void cacheAdvanceFrame(void)
+{
+    for (int i = 0; i < g_lru_cache_count; i++)
+        g_lru_caches[i].frame_counter++;
 }
 
 static void cacheClearItem(cache_entry_t *item, int freeTxt)
@@ -331,7 +359,6 @@ GSTEXTURE *cacheGetTexture(image_cache_t *cache, item_list_t *list, int *cacheId
 
         if (ioPutRequest(IO_CACHE_LOAD_ART, req) < 0) {
             cacheClearItem(oldestEntry, 0);
-            free(req->value);
             request_pool_free(req);
             *cacheId = -1;
         }

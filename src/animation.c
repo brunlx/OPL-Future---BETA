@@ -28,10 +28,18 @@ static float anim_ease_out(float t) { return 1.0f - (1.0f - t) * (1.0f - t); }
 static float anim_ease_in_out(float t) { return t < 0.5f ? 2*t*t : 1 - powf(-2*t + 2, 2)/2; }
 static float anim_bounce(float t) {
     const float n1 = 7.5625f, d1 = 2.75f;
-    if (t < 1/d1) return n1*t*t;
-    else if (t < 2/d1) return n1*(t-=1.5/d1)*t + 0.75f;
-    else if (t < 2.5/d1) return n1*(t-=2.25/d1)*t + 0.9375f;
-    else return n1*(t-=2.625/d1)*t + 0.984375f;
+    if (t < 1 / d1)
+        return n1 * t * t;
+    if (t < 2 / d1) {
+        t -= 1.5f / d1;
+        return n1 * t * t + 0.75f;
+    }
+    if (t < 2.5f / d1) {
+        t -= 2.25f / d1;
+        return n1 * t * t + 0.9375f;
+    }
+    t -= 2.625f / d1;
+    return n1 * t * t + 0.984375f;
 }
 static float anim_elastic(float t) {
     if (t == 0 || t == 1) return t;
