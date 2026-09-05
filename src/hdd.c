@@ -298,7 +298,7 @@ int hddDeleteHDLGame(hdl_game_info_t *ginfo)
 
     LOG("HDD Delete game: '%s'\n", ginfo->name);
 
-    sprintf(path, "hdd0:%s", ginfo->partition_name);
+    snprintf(path, sizeof(path), "hdd0:%s", ginfo->partition_name);
 
     return unlink(path);
 }

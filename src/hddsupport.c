@@ -49,10 +49,10 @@ static void hddInitModules(void)
 
     // update Themes
     char path[256];
-    sprintf(path, "%sTHM", gHDDPrefix);
+    snprintf(path, sizeof(path), "%sTHM", gHDDPrefix);
     thmAddElements(path, "/", 1);
 
-    sprintf(path, "%sLNG", gHDDPrefix);
+    snprintf(path, sizeof(path), "%sLNG", gHDDPrefix);
     lngAddLanguages(path, "/", hddGameList.mode);
 
     sbCreateFolders(gHDDPrefix, 0);
@@ -105,7 +105,7 @@ static void hddCheckOPLFolder(const char *mountPoint)
     DIR *dir;
     char path[32];
 
-    sprintf(path, "%sOPL", mountPoint);
+    snprintf(path, sizeof(path), "%sOPL", mountPoint);
 
     dir = opendir(path);
     if (dir == NULL)
@@ -164,7 +164,7 @@ static int hddCreateOPLPartition(const char *name)
     int fd, result;
     char cmd[140];
 
-    sprintf(cmd, "%s,,,128M,PFS", name);
+    snprintf(cmd, sizeof(cmd), "%s,,,128M,PFS", name);
     if ((fd = open(cmd, O_CREAT | O_TRUNC | O_WRONLY)) >= 0) {
         close(fd);
         result = fileXioFormat(hddPrefix, name, (const char *)&formatArg, sizeof(formatArg));
@@ -423,7 +423,7 @@ static void hddDeleteGame(item_list_t *itemList, int id)
 static void hddRenameGame(item_list_t *itemList, int id, char *newName)
 {
     hdl_game_info_t *game = &hddGames.games[id];
-    strcpy(game->name, newName);
+    strncpy(game->name, newName, sizeof(game->name) - 1); game->name[sizeof(game->name) - 1] = '\0';
     hddSetHDLGameInfo(&hddGames.games[id]);
     hddForceUpdate = 1;
 }
@@ -579,7 +579,7 @@ void hddLaunchGame(item_list_t *itemList, int id, config_set_t *configSet)
     settings->lba_start = game->start_sector;
 
     if (configGetStrCopy(configSet, CONFIG_ITEM_ALTSTARTUP, filename, sizeof(filename)) == 0)
-        strcpy(filename, game->startup);
+        strncpy(filename, game->startup, sizeof(filename) - 1); filename[sizeof(filename) - 1] = '\0';
 
     if (gPS2Logo)
         EnablePS2Logo = CheckPS2Logo(0, game->start_sector + OPL_HDD_MODE_PS2LOGO_OFFSET);
@@ -725,7 +725,7 @@ static int hddLoadGameListCache(hdl_games_list_t *cache)
 
     hddFreeHDLGamelist(cache);
 
-    sprintf(filename, "%sgames.bin", gHDDPrefix);
+    snprintf(filename, sizeof(filename), "%sgames.bin", gHDDPrefix);
     file = fopen(filename, "rb");
     if (file != NULL) {
         fseek(file, 0, SEEK_END);
@@ -798,7 +798,7 @@ static int hddUpdateGameListCache(hdl_games_list_t *cache, hdl_games_list_t *gam
         return 0;
     LOG("hddUpdateGameListCache: caching new game list.\n");
 
-    sprintf(filename, "%sgames.bin", gHDDPrefix);
+    snprintf(filename, sizeof(filename), "%sgames.bin", gHDDPrefix);
     if (game_list->count > 0) {
         file = fopen(filename, "wb");
         if (file != NULL) {

@@ -141,7 +141,7 @@ static int loadISOGameListCache(const char *path, struct game_cache_list *cache)
 
     freeISOGameListCache(cache);
 
-    sprintf(filename, "%s/games.bin", path);
+    snprintf(filename, sizeof(filename), "%s/games.bin", path);
     file = fopen(filename, "rb");
     if (file != NULL) {
         fseek(file, 0, SEEK_END);
@@ -231,7 +231,7 @@ static int updateISOGameList(const char *path, const struct game_cache_list *cac
     LOG("updateISOGameList: caching new game list.\n");
 
     result = 0;
-    sprintf(filename, "%s/games.bin", path);
+    snprintf(filename, sizeof(filename), "%s/games.bin", path);
     if ((head != NULL) && (count > 0)) {
         list = (base_game_info_t *)memalign(64, sizeof(base_game_info_t) * count);
 
@@ -827,7 +827,7 @@ static void sbCreateFoldersFromList(const char *path, const char **folders)
     char fullpath[256];
 
     for (i = 0; folders[i] != NULL; i++) {
-        sprintf(fullpath, "%s%s", path, folders[i]);
+        snprintf(fullpath, sizeof(fullpath), "%s%s", path, folders[i]);
         mkdir(fullpath, 0777);
     }
 }

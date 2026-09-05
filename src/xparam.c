@@ -170,9 +170,9 @@ void ResetDeckardXParams()
         // Reset all the params to default.
         int i;
         for (i = 0; i < 0x12; i++) {
-            sprintf(&params[12], "0X%02X", i);
+            snprintf(&params[12], sizeof(params) - 12, "0X%02X", i);
             params[16] = 0;
-            sprintf(&params[17], "0X%08X", default_values[i]);
+            snprintf(&params[17], sizeof(params) - 17, "0X%08X", default_values[i]);
             params[27] = 0;
             SifLoadModule("rom0:XPARAM", 28, params);
         }

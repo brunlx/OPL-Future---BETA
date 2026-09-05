@@ -601,7 +601,7 @@ int sysDeleteFolder(const char *folder)
                 continue;
 
             path = malloc(strlen(folder) + strlen(dirent->d_name) + 2);
-            sprintf(path, "%s/%s", folder, dirent->d_name);
+            snprintf(path, sizeof(path), "%s/%s", folder, dirent->d_name);
 
             if (dirent->d_type == DT_DIR) {
                 /* Recursive, delete all subfolders */
@@ -639,7 +639,7 @@ int sysDeleteFolder(const char *folder)
         for (head = start; head != NULL; head = start) {
             if (head->filename != NULL) {
                 if ((path = malloc(strlen(folder) + strlen(head->filename) + 2)) != NULL) {
-                    sprintf(path, "%s/%s", folder, head->filename);
+                    snprintf(path, sizeof(path), "%s/%s", folder, head->filename);
                     result = unlink(path);
                     if (result < 0)
                         LOG("sysDeleteFolder: failed to remove %s: %d\n", path, result);

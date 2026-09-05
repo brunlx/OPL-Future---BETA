@@ -1390,7 +1390,7 @@ static void compatUpdate(item_list_t *support, unsigned char mode, config_set_t 
                                 hasMtime = 0;
                             }
 
-                            sprintf(uri, OPL_COMPAT_HTTP_URI, startup, device);
+                            snprintf(uri, sizeof(uri), OPL_COMPAT_HTTP_URI, startup, device);
                             for (retries = OPL_COMPAT_HTTP_RETRIES; !CompatUpdateStopFlag && retries > 0; retries--) {
                                 length = HTTP_IOBUF_SIZE;
                                 result = HttpSendGetRequest(HttpSocket, OPL_USER_AGENT, OPL_COMPAT_HTTP_HOST, &ConnMode, hasMtime ? mtime : NULL, uri, HttpBuffer, &length);

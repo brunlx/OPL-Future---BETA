@@ -561,7 +561,7 @@ static char *bdaddr_to_str(u8 *bdaddr, char *addstr)
 
 static char *hex_to_str(char *str, u16 hex)
 {
-    sprintf(str, "%04X", hex);
+    snprintf(str, 32, "%04X", hex);
 
     return str;
 }
@@ -571,7 +571,7 @@ static char *ver_to_str(char *str, u8 ma, u16 mi)
     if (ma > 9)
         ma = 0;
 
-    sprintf(str, "%X.%04X    BT %s", ma, mi, bt_ver_str[ma]);
+    snprintf(str, 32, "%X.%04X    BT %s", ma, mi, bt_ver_str[ma]);
 
     return str;
 }

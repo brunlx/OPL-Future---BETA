@@ -38,7 +38,7 @@ int CreateSystemDataFolder(const char *path, char FolderRegionLetter)
     int fd, result, size;
     void *icon;
 
-    sprintf(fullpath, "%s/icon.sys", path);
+    snprintf(fullpath, sizeof(fullpath), "%s/icon.sys", path);
     if ((fd = open(fullpath, O_RDONLY)) < 0) {
         mkdir(path, 0777);
         if ((fd = open(fullpath, O_CREAT | O_TRUNC | O_WRONLY)) >= 0) {
@@ -73,7 +73,7 @@ int LoadHistoryFile(const char *path, struct HistoryEntry *HistoryEntries)
     char fullpath[64];
     int fd, result;
 
-    sprintf(fullpath, "%s/history", path);
+    snprintf(fullpath, sizeof(fullpath), "%s/history", path);
     if ((fd = open(fullpath, O_RDONLY)) >= 0) {
         result = read(fd, HistoryEntries, MAX_HISTORY_ENTRIES * sizeof(struct HistoryEntry)) == (MAX_HISTORY_ENTRIES * sizeof(struct HistoryEntry)) ? 0 : -EIO;
         close(fd);
@@ -88,7 +88,7 @@ int SaveHistoryFile(const char *path, const struct HistoryEntry *HistoryEntries)
     char fullpath[64];
     int fd, result;
 
-    sprintf(fullpath, "%s/history", path);
+    snprintf(fullpath, sizeof(fullpath), "%s/history", path);
     if ((fd = open(fullpath, O_WRONLY | O_CREAT | O_TRUNC)) >= 0) {
         result = write(fd, HistoryEntries, MAX_HISTORY_ENTRIES * sizeof(struct HistoryEntry)) == (MAX_HISTORY_ENTRIES * sizeof(struct HistoryEntry)) ? 0 : -EIO;
         close(fd);
@@ -103,7 +103,7 @@ int AddOldHistoryFileRecord(const char *path, const struct HistoryEntry *OldHist
     char fullpath[64];
     int fd, result;
 
-    sprintf(fullpath, "%s/history.old", path);
+    snprintf(fullpath, sizeof(fullpath), "%s/history.old", path);
     if ((fd = open(fullpath, O_WRONLY | O_APPEND)) >= 0) {
         lseek(fd, 0, SEEK_END);
         result = write(fd, OldHistoryEntry, sizeof(struct HistoryEntry)) == sizeof(struct HistoryEntry) ? 0 : -EIO;
@@ -150,7 +150,7 @@ int AddHistoryRecord(const char *name)
 
 
     // For simplicity, create the data folder immediately if the history file does not exist (unlike the original).
-    sprintf(path, "mc%d:/%s", i, GetSystemDataPath());
+    snprintf(path, sizeof(path), "mc%d:/%s", i, GetSystemDataPath());
     if ((result = LoadHistoryFile(path, HistoryEntries)) != 0) {
         DEBUG_PRINTF("\tcan't load history file.\n");
         SystemRegionLetter = GetSystemFolderLetter();
@@ -280,7 +280,7 @@ static void GetBootFilename(const char *bootpath, char *filename)
     }
 
     if (i == 0) { // The boot path contains only the filename.
-        strcpy(filename, bootpath);
+        strncpy(filename, bootpath, sizeof(filename) - 1); filename[sizeof(filename) - 1] = \0;
     }
 }
 

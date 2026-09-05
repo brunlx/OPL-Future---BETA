@@ -139,8 +139,8 @@ void PrepareGSM(char *cmdline, struct GsmConfig_t *config)
 
     FIELD_fix = gGSMFIELDFix != 0 ? 1 : 0;
 
-    if (cmdline) {
-        sprintf(cmdline, "%hhu %hhu %hhu %llu %llu %hu %u %u %d %d %d", predef_vmode[gGSMVMode].interlace,
+    if (cmdline) { snprintf(cmdline, 256
+        snprintf(cmdline, 256, "%hhu %hhu %hhu %llu %llu %hu %u %u %d %d %d", predef_vmode[gGSMVMode].interlace,
                 predef_vmode[gGSMVMode].mode,
                 predef_vmode[gGSMVMode].ffmd,
                 predef_vmode[gGSMVMode].display,

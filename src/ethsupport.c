@@ -63,7 +63,7 @@ static void ethSMBConnect(void)
     int result;
 
     if (gETHPrefix[0] != '\0')
-        sprintf(ethPrefix, "%s%s\\", ethBase, gETHPrefix);
+        snprintf(ethPrefix, sizeof(ethPrefix), "%s%s\\", ethBase, gETHPrefix);
     else
         strcpy(ethPrefix, ethBase);
 
@@ -74,9 +74,9 @@ static void ethSMBConnect(void)
             return;
         }
 
-        sprintf(logon.serverIP, "%u.%u.%u.%u", share_ip_address[0], share_ip_address[1], share_ip_address[2], share_ip_address[3]);
+        snprintf(logon.serverIP, sizeof(logon.serverIP), "%u.%u.%u.%u", share_ip_address[0], share_ip_address[1], share_ip_address[2], share_ip_address[3]);
     } else {
-        sprintf(logon.serverIP, "%u.%u.%u.%u", pc_ip[0], pc_ip[1], pc_ip[2], pc_ip[3]);
+        snprintf(logon.serverIP, sizeof(logon.serverIP), "%u.%u.%u.%u", pc_ip[0], pc_ip[1], pc_ip[2], pc_ip[3]);
     }
 
     logon.serverPort = gPCPort;
@@ -258,10 +258,10 @@ static void ethInitSMB(void)
     if (gNetworkStartup == 0) {
         // update Themes
         char path[256];
-        sprintf(path, "%sTHM", ethPrefix);
+        snprintf(path, sizeof(path), "%sTHM", ethPrefix);
         thmAddElements(path, "\\", 1);
 
-        sprintf(path, "%sLNG", ethPrefix);
+        snprintf(path, sizeof(path), "%sLNG", ethPrefix);
         lngAddLanguages(path, "\\", ethGameList.mode);
 
         sbCreateFolders(ethPrefix, 1);
@@ -461,7 +461,7 @@ static int ethNeedsUpdate(item_list_t *itemList)
         struct stat st;
         char path[256];
 
-        sprintf(path, "%sCD", ethPrefix);
+        snprintf(path, sizeof(path), "%sCD", ethPrefix);
         if (stat(path, &st) != 0)
             st.st_mtime = 0;
         if (ethModifiedCDPrev != st.st_mtime) {
@@ -469,7 +469,7 @@ static int ethNeedsUpdate(item_list_t *itemList)
             result = 1;
         }
 
-        sprintf(path, "%sDVD", ethPrefix);
+        snprintf(path, sizeof(path), "%sDVD", ethPrefix);
         if (stat(path, &st) != 0)
             st.st_mtime = 0;
         if (ethModifiedDVDPrev != st.st_mtime) {
@@ -514,7 +514,7 @@ static int ethUpdateGameList(item_list_t *itemList)
                 base_game_info_t *g = &ethGames[i];
                 memcpy(g->name, sharelist[i].ShareName, sizeof(g->name));
                 g->name[31] = '\0';
-                sprintf(g->startup, "SHARE");
+                snprintf(g->startup, sizeof(g->startup), "SHARE");
                 g->extension[0] = '\0';
                 g->parts = 0x00;
                 g->media = 0x00;
@@ -661,7 +661,7 @@ static void ethLaunchGame(item_list_t *itemList, int id, config_set_t *configSet
             settings->common.flags |= IOPCORE_SMB_FORMAT_USBLD;
     }
 
-    sprintf(settings->smb_ip, "%u.%u.%u.%u", pc_ip[0], pc_ip[1], pc_ip[2], pc_ip[3]);
+    snprintf(settings->smb_ip, sizeof(settings->smb_ip), "%u.%u.%u.%u", pc_ip[0], pc_ip[1], pc_ip[2], pc_ip[3]);
     settings->smb_port = gPCPort;
     strcpy(settings->smb_share, gPCShareName);
     strcpy(settings->smb_prefix, gETHPrefix);

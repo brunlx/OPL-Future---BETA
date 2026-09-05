@@ -1172,7 +1172,7 @@ static int thmReadEntry(int index, const char *path, const char *separator, cons
 
         length = strlen(path) + 1 + strlen(name) + 1 + 1;
         currTheme->filePath = (char *)malloc(length * sizeof(char));
-        sprintf(currTheme->filePath, "%s%s%s%s", path, separator, name, separator);
+        snprintf(currTheme->filePath, length, "%s%s%s%s", path, separator, name, separator);
 
         LOG("THEMES Theme found: %s\n", currTheme->filePath);
 
