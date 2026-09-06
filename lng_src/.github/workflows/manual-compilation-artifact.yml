@@ -1,0 +1,33 @@
+name: Manual Language Compile
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: ghcr.io/ps2homebrew/ps2homebrew:main
+    steps:
+      - name: Checkout main repository
+        uses: actions/checkout@v3
+        with:
+          repository: ps2homebrew/Open-PS2-Loader
+
+      - name: Checkout language source
+        uses: actions/checkout@v3
+        with:
+          path: lng_src
+
+      - name: Mark repo as safe
+        run: git config --global --add safe.directory /__w/Open-PS2-Loader-lang/Open-PS2-Loader-lang
+
+      - name: Compile language files
+        run: |
+          make --trace languages
+          sh ./lng_pack.sh
+
+      - name: Upload compiled language files
+        uses: actions/upload-artifact@v4
+        with:
+          name: compiled-languages
+          path: lng/*.lng

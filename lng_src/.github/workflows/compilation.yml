@@ -1,0 +1,25 @@
+name: CI-compile
+
+on:
+  push:
+  pull_request:
+  repository_dispatch:
+    types: [run_build]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: ghcr.io/ps2homebrew/ps2homebrew:main
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          repository: ps2homebrew/Open-PS2-Loader
+
+      - uses: actions/checkout@v3
+        with:
+          path: lng_src
+
+      - name: Compile
+        run: |
+          make --trace languages
+          sh ./lng_pack.sh
