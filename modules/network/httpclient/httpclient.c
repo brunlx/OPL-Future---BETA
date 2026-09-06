@@ -8,6 +8,106 @@
 
 #include "httpclient.h"
 
+/* Minimal snprintf/sprintf implementation for bare-metal PS2 environment
+   where the standard C library functions are not available. */
+static int vsnprintf_helper(char *str, size_t size, unsigned int val)
+{
+    if (val / 10) {
+        vsnprintf_helper(str + 1, size - 1, val / 10);
+        *str = '0' + (val % 10);
+    } else {
+        *str = '0';
+    }
+    return 1;
+}
+
+int vsnprintf(char *str, size_t size, const char *format, va_list ap)
+{
+    register int ret = 0;
+    register char *s = str;
+    register char c;
+    register const char *f = format;
+
+    if (size > 0) {
+        while ((c = *f++) != '\0') {
+            if (c == '%') {
+                c = *f++;
+                switch (c) {
+                    case 'd':
+                    case 'i': {
+                        int n = va_arg(ap, int);
+                        if (n < 0) {
+                            if (s < str + (int)size - 1) *s++ = '-';
+                            ret++;
+                            n = -n;
+                        }
+                        if (n / 10) {
+                            register int r = vsnprintf_helper(s, size - (s - str - 1), n / 10);
+                            ret += r;
+                            s += r;
+                        }
+                        if (s < str + (int)size - 1) *s++ = '0' + (n % 10);
+                        ret++;
+                        break;
+                    }
+                    case 'u': {
+                        unsigned int n = va_arg(ap, unsigned int);
+                        if (n / 10) {
+                            register int r = vsnprintf_helper(s, size - (s - str - 1), n / 10);
+                            ret += r;
+                            s += r;
+                        }
+                        if (s < str + (int)size - 1) *s++ = '0' + (n % 10);
+                        ret++;
+                        break;
+                    }
+                    case 'x':
+                    case 'X': {
+                        unsigned int n = va_arg(ap, unsigned int);
+                        const char *hex = c == 'x' ? "0123456789abcdef" : "0123456789ABCDEF";
+                        if (n / 16) {
+                            register int r = vsnprintf_helper(s, size - (s - str - 1), n / 16);
+                            ret += r;
+                            s += r;
+                        }
+                        if (s < str + (int)size - 1) *s++ = hex[n % 16];
+                        ret++;
+                        break;
+                    }
+                    case 's': {
+                        const char *s2 = va_arg(ap, const char *);
+                        while (*s2 && s < str + (int)size - 1) {
+                            *s++ = *s2++;
+                        }
+                        *s = '\0';
+                        return s - str - 1;
+                    }
+                    case '%': if (s < str + (int)size - 1) *s++ = '%'; ret++; break;
+                    default: if (s < str + (int)size - 1) *s++ = c; ret++; break;
+                }
+                if (s >= str + (int)size - 1) break;
+            } else {
+                *s++ = c;
+                ret++;
+                if (s >= str + (int)size - 1) break;
+            }
+        }
+        *s = '\0';
+    }
+    return ret;
+}
+
+int snprintf(char *str, size_t size, const char *format, ...)
+{
+    va_list ap;
+    int ret;
+    if (size == 0) return 0;
+    va_start(ap, format);
+    ret = vsnprintf(str, size, format, ap);
+    va_end(ap);
+    return ret;
+}
+
 void HttpCloseConnection(s32 HttpSocket)
 {
     shutdown(HttpSocket, SHUT_RDWR);

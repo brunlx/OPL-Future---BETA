@@ -280,7 +280,7 @@ static void GetBootFilename(const char *bootpath, char *filename)
     }
 
     if (i == 0) { // The boot path contains only the filename.
-        strncpy(filename, bootpath, sizeof(filename) - 1); filename[sizeof(filename) - 1] = \0;
+        strncpy(filename, bootpath, sizeof(filename) - 1); filename[sizeof(filename) - 1] = '\0';
     }
 }
 

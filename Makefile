@@ -1,4 +1,5 @@
 VERSION = 1
+EE_STRIP = /usr/local/ps2dev/ee/bin/mips64r5900el-ps2-elf-strip
 SUBVERSION = 2
 PATCHLEVEL = 0
 EXTRAVERSION = Beta
