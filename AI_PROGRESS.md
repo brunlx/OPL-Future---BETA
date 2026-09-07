@@ -204,3 +204,19 @@ Notes:
 - gui.c loading/busy handling drives the theme's LoadingIcon element (fade in/out, animation) - no code change needed
 - Hardware runtime testing (PS2 boot, display) still required
 - Audit docs from prior phase preserved: AI_CHECKPOINT.md, FINAL_AUDIT.md
+
+## Release & Repo (2026-09-07)
+
+- **História do git limpa**: artefatos de build (.o/.d/.map/.elf/.ELF) e binários
+  de terceiros removidos do histórico via `git-filter-repo` (1613 → 691 arquivos,
+  repositório 45 MB → 6,7 MB). Clone limpo regenera o build via `make`.
+- **Build verificado do zero**: `make all PS2_PACKER_DIR=/usr/local/ps2dev/bin`
+  → `opl.elf` (10 336 184 B) → `opl_stripped.elf` (3 242 676 B) → `OPNPS2LD.ELF`
+  (1 347 044 B). SHA-256 novo: `b141f06a…3ef19`.
+- **README reescrito** com descrição do fork, badges do repositório, documentação
+  completa e preview do tema (`misc/preview.png`).
+- **CHANGELOG** com seção v1.2.0-Beta (fork) + docs internas realinhadas
+  (AI_CHECKPOINT, CONTINUE_OPL, FINAL_AUDIT).
+- **GitHub**: descrição do repo e tópicos atualizados; releases v1.0.0/v2.0.0 com
+  notas completas; asset `OPNPS2LD.ELF` da v2.0.0 atualizado para o build novo.
+- Workflow `compilation.yml`: branch `master` → `main` (pre-release funciona).
