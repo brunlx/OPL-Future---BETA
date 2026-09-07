@@ -1,4 +1,6 @@
 #
+# OPL FUTURE - BETA — .gitignore
+#
 # NOTE! Please use 'git ls-files -i --exclude-standard'
 # command after changing this file, to see if there are
 # any tracked files which get ignored after the change.
@@ -20,7 +22,6 @@
 *.s
 *.zip
 *.ZIP
-*.a
 *.d
 DETAILED_CHANGELOG
 
@@ -50,7 +51,6 @@ asm/*.c
 
 # language
 lng/lang_*.lng
-*lng_src
 src/lang_internal.c
 include/lang_autogen.h
 tmp/
