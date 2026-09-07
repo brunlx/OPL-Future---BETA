@@ -102,6 +102,17 @@ void rmDrawRect(int x, int y, int w, int h, u64 color);
 /** Queues a single color line to be rendered */
 void rmDrawLine(int x1, int y1, int x2, int y2, u64 color);
 
+/** Queues an outlined rectangle to be rendered (used for futuristic frames) */
+void rmDrawRectOutline(int x, int y, int w, int h, int thickness, u64 color);
+
+/** Queues hollow corner brackets (a sci-fi frame) around the given rect.
+ * @param size The length of each bracket arm in pixels
+ */
+void rmDrawFrame(int x, int y, int w, int h, int thickness, int size, u64 color);
+
+/** Queues a horizontal gradient bar (top->bottom) using two RGBA colors */
+void rmDrawRectVGrad(int x, int y, int w, int h, const u8 *topRGB, const u8 *bottomRGB, u8 alpha);
+
 /** Starts the frame - first to call every frame */
 void rmStartFrame(void);
 

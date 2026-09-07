@@ -66,6 +66,21 @@ typedef struct
     mutable_image_t *decoratorImage;
 } items_list_t;
 
+typedef struct
+{
+    mutable_image_t image;
+
+    int neighbors;
+    int spacing;
+    int sideScale;
+} carousel_t;
+
+typedef struct
+{
+    int thickness;
+    int size;
+} frame_t;
+
 typedef struct theme_element
 {
     int type;

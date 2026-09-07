@@ -384,7 +384,7 @@ $(EE_BIN_STRIPPED): $(EE_BIN)
 
 $(EE_BIN_PACKED): $(EE_BIN_STRIPPED)
 	echo "Compressing..."
-	(cd $(PS2_PACKER_DIR) && ./ps2-packer $< $@) > /dev/null
+	(cd $(PS2_PACKER_DIR) && ./ps2-packer $(CURDIR)/$< $(CURDIR)/$@) > /dev/null
 
 $(EE_VPKD).ELF: $(EE_BIN_PACKED)
 	cp -f $< $@

@@ -2,14 +2,20 @@
 
 ## Current Phase
 
-Release preparation and validation - finalizing for distribution
+OPL FUTURE frontend redesign — new theme elements implemented, default theme redesigned; QA (static+build) passed; Fase 3 applied hardware-visual fixes (empty state carousel, StatusBar compacta, SelectorBar tiles) and rebuilt ELFs
 
 ## Overall Status
 
 Project: Open PS2 Loader (OPL) refactored version
-PS2SDK: /home/bruno/ps2sdk_minimal (minimal setup - missing cross-compiler and libraries)
-Build status: Release preparation completed - code audited and bugs fixed
-Code audit: Completed - all critical areas reviewed and documented
+PS2SDK: /usr/local/ps2dev (full toolchain: GCC 15.2.0 mips64r5900el-ps2-elf, libraries, ps2-packer)
+Build status: Building and packing successfully via `make` (packer quirk BUG-003 fixed, absolute paths)
+Code audit: Completed (previous phase)
+Frontend: OPL FUTURE theme (Carousel, SelectorBar, StatusBar, Frame + redesigned conf_theme_OPL.cfg), plus Fase 3 visual fixes:
+- BUG-101: empty-state in Carousel when a device has no items (`drawCarouselEmptyState`)
+- BUG-102: main cover falls back to `defaultTexture` while art loads / missing
+- BUG-103: StatusBar compact (device status only, no name echo)
+- BUG-104: SelectorBar tiles = icon + status dot, no repeated device name, sane sizing
+Fase 3 build: `opl.elf` 10 336 184 B, `opl_stripped.elf` 3 242 676 B, `OPNPS2LD.ELF` 1 347 044 B (SHA-256 591317b1…) — no new warnings.
 
 ## Architecture
 
@@ -35,30 +41,34 @@ Code audit: Completed - all critical areas reviewed and documented
 ## Toolchain
 
 - Target: MIPS (PlayStation 2)
-- Compiler: ps2-gcc (from PS2SDK) - NOT available in current environment
-- bin2c: /home/bruno/ps2sdk_minimal/bin/bin2c (available, used for asset conversion)
-- PS2SDK minimal at /home/bruno/ps2sdk_minimal (has bin2c and headers, no libs or compiler)
-- fsingle-precision-constant make error resolved by proper variable handling
-- Cannot link without PS2SDK libraries (libgskit, libdmakit, libfileXio, etc.)
+- Compiler: mips64r5900el-ps2-elf-gcc 15.2.0 (full SDK at /usr/local/ps2dev, in PATH)
+- Default C standard: gnu17 (C99 compound literals supported)
+- ps2-packer: /usr/local/ps2dev/bin/ps2-packer (run manually - Makefile packer target has a relative-path bug)
+- bin2c/bin2s: asset conversion; theme configs compiled to objects via bin2s (MISC_OBJS += conf_theme_OPL.o)
 
-## Files Modified (git diff - 4 files, 11 insertions, 14 deletions)
+## Files Modified (OPL FUTURE theme work - new code)
 
-1. **Makefile**:
-   - PADEMU ?= 0 (was ?= 1) - disables pad emulator by default, reducing IOP module load
-   - Removed EE_CFLAGS += -O2 when not debugging - avoids Make variable conflicts
-   - Added explicit $(EE_BIN): $(EE_OBJS) rule - ensures proper linking dependency
-   - Commented $(PS2SDK)/samples/Makefile.pref and .eeglobal includes - not needed for this build
+1. **src/themes.c** (major):
+   - New element types: `carousel_t`, `selector_bar_t`, `status_bar_t`, `frame_t` extended structs
+   - Carousel: `initCarousel`, `endCarousel`, `drawSingleCover`, `drawCarousel` (gradient glow + neon frame)
+   - SelectorBar: `initSelectorBar`, `drawSelectorBar` (device pills, active gradient, status dots)
+   - StatusBar: `initStatusBar`, `drawStatusBar` (2-pass device status line, ETH ONLINE/OFFLINE)
+   - Frame: `initFrame`, `drawFrame` (neon corner brackets + background tint)
+   - `addGUIElem` branches wired for all four new types
+   - `drawCarousel` fixed: aligned=1 → posX/posY is main-cover center (ItemCover semantics)
+   - `drawItemsList`: futuristic gradient selection bar + cyan neon accent
+   - Palette: 0x00D8FF cyan primary, deep navy/black/graphite grays
 
-2. **ee_core/Makefile**:
-   - Commented EE_CFLAGS = line - now set via main Makefile's EE_CFLAGS += mechanism
-   - Commented include $(PS2SDK)/samples/Makefile.pref - not needed for this build
+2. **include/themes.h**:
+   - `carousel_t`, `frame_t` structs; enum extended with `ELEM_TYPE_CAROUSEL/SELECTOR_BAR/STATUS_BAR/FRAME`
 
-3. **src/opl.c**:
-   - Removed `int configGetStat(config_set_t *configSet, iox_stat_t *stat);` declaration - function is defined in config.c and already declared there
+3. **misc/conf_theme_OPL.cfg** (completely rewritten):
+   - Main screen: Background, MenuIcon, MenuText, StatusBar (device statuses), Frame, Carousel, ItemText, ItemsList (14 items), SelectorBar (bottom dock, 600px wide), HintText, GameCountText, BdmIndex, LoadingIcon (bottom-right 32px)
+   - Apps screen: appsMain7 ItemsList override; appsMain5 ItemCover with apps_case overlay (classic look)
+   - Info screen: Background, StaticImage, AttributeText (Title/Genre/Release/Developer/Size), Description wrap, media badges (5 images row), Rating, Device, GameImage (SCR/SCR2), Frame (panel border), InfoHintText
 
-4. **src/sound.c**:
-   - Removed `int i = 1;` (file-scope variable shared between sfxInitDefaults and sfxInit)
-   - Changed loop from `for (; i < SFX_COUNT; i++)` with manual `i = bootSnd ? 0 : 1;` to `for (int i = 0; i < SFX_COUNT; i++)` - fixes sfx initialization bug where i could be left at SFX_COUNT by sfxInitDefaults, causing the sfxInit loop to not execute
+4. **Makefile** (previous audit changes):
+   - PADEMU ?= 0, removed -O2, added explicit linking dependency
 
 ## Problems Found and Fixed
 
@@ -104,6 +114,21 @@ Code audit: Completed - all critical areas reviewed and documented
 - Menu system and game browsing code is well-structured with proper NULL checks
 - Input handling and configuration UI are functional
 - Language system supports 28 languages, generated from YAML templates
+
+### OPL FUTURE Theme Elements (new, in src/themes.c)
+- **Carousel** (ELEM_TYPE_CAROUSEL): cover-art carousel with gradient glow + neon Frame overlay, neighbors, spacing, side_scale; uses `thmGetTexture(COV)` cache; config: `_pattern/_count/_default/_neighbors/_spacing/_side_scale`
+- **SelectorBar** (ELEM_TYPE_SELECTOR_BAR): bottom device mode selector, auto-sized gradient pills, cyan neon border; per-device status icons + colored dots (READY/STANDBY); device names via `menuItemGetText` localized strings; config: `_devices` comma-separated list
+- **StatusBar** (ELEM_TYPE_STATUS_BAR): HUD status line at top showing all BDM devices/ETH status, 2-pass layout, ETH text ONLINE/OFFLINE; config: `_devices` list
+- **Frame** (ELEM_TYPE_FRAME): decorative neon corner brackets + background tint; config: `_thickness/_size/_color` (6-digit hex)
+- **drawItemsList** polished: gradient highlight bar (GUI_COLOR_ACTIVE/ACTIVE2/GUI_COLOR_SELECTOR_BAR/SELECTOR_BAR2) + cyan accent stripe (0x80 alpha) on active item
+
+## Build Artifacts
+
+| File | Path | Size |
+|------|------|------|
+| `opl.elf` | `/home/bruno/Documentos/OPL-Refactored/opl.elf` | ~10.3 MB (uncompressed EE ELF) |
+| `opl_stripped.elf` | `/home/bruno/Documentos/OPL-Refactored/opl_stripped.elf` | ~3.2 MB (stripped) |
+| `OPNPS2LD.ELF` | `/home/bruno/Documentos/OPL-Refactored/OPNPS2LD.ELF` | ~1.3 MB (packed, 58.47% ratio) |
 
 ## Performance
 
@@ -170,7 +195,12 @@ Code audit: Completed - all critical areas reviewed and documented
 
 ## Next Action
 
-Finalize AI_PROGRESS.md, prepare release documentation, ready for build when PS2SDK becomes available. All audit files generated:
-- AI_PROGRESS.md - Phase status and progress
-- AI_CHECKPOINT.md - Current state, analyzed files, fixed bugs, risks
-- FINAL_AUDIT.md - Complete audit documentation with all findings
+Fase 3 (hardware-feedback visual fixes) applied and built. Both ELFs rebuilt and validated:
+- `opl.elf` (unpacked), `opl_stripped.elf`, and `OPNPS2LD.ELF` (packed) in project root — packer runs via `make` (BUG-003 fixed)
+- Theme config `misc/conf_theme_OPL.cfg` unchanged in Fase 3 (all fixes are in `src/themes.c`)
+- Remaining: real-PS2 validation of BUG-101..104 per OPL_FUTURE_QA_REPORT.md §10; then mark HARDWARE TEST
+
+Notes:
+- gui.c loading/busy handling drives the theme's LoadingIcon element (fade in/out, animation) - no code change needed
+- Hardware runtime testing (PS2 boot, display) still required
+- Audit docs from prior phase preserved: AI_CHECKPOINT.md, FINAL_AUDIT.md

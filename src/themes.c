@@ -48,6 +48,10 @@ enum ELEM_ATTRIBUTE_TYPE {
     ELEM_TYPE_LOADING_ICON,
     ELEM_TYPE_BDM_INDEX,
     ELEM_TYPE_GAME_COUNT_TEXT,
+    ELEM_TYPE_CAROUSEL,
+    ELEM_TYPE_SELECTOR_BAR,
+    ELEM_TYPE_STATUS_BAR,
+    ELEM_TYPE_FRAME,
     ELEM_TYPE_COUNT
 };
 
@@ -76,7 +80,11 @@ static const char *elementsType[ELEM_TYPE_COUNT] = {
     "InfoHintText",
     "LoadingIcon",
     "BdmIndex",
-    "GameCountText"};
+    "GameCountText",
+    "Carousel",
+    "SelectorBar",
+    "StatusBar",
+    "Frame"};
 
 // Common functions for Text ////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -856,8 +864,12 @@ static void drawItemsList(struct menu_list *menu, struct submenu_list *item, con
             if (selected) {
                 color = gTheme->selTextColor;
                 int barW = (elem->width > 0) ? elem->width : 360;
-                rmDrawRect(posX - 4, posY - 1, barW, MENU_ITEM_HEIGHT - 2,
-                           GS_SETREG_RGBA(gDefaultSelTextColor[0], gDefaultSelTextColor[1], gDefaultSelTextColor[2], 0x28));
+
+                // translucent futuristic selection bar (gradient + left neon accent)
+                rmDrawRectVGrad(posX - 4, posY - 1, barW, MENU_ITEM_HEIGHT - 2,
+                                (u8[]){0x0E, 0x24, 0x3C}, (u8[]){0x03, 0x08, 0x10}, 0x50);
+                rmDrawRect(posX - 4, posY - 1, 3, MENU_ITEM_HEIGHT - 2,
+                           GS_SETREG_RGBA(gDefaultSelTextColor[0], gDefaultSelTextColor[1], gDefaultSelTextColor[2], 0x90));
             } else
                 color = elem->color;
 
@@ -906,6 +918,376 @@ static void initItemsList(const char *themePath, config_set_t *themeConfig, them
     // elem->endElem = &endBasic; does the job
 
     elem->drawElem = &drawItemsList;
+}
+
+// Carousel /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+static void endCarousel(struct theme_element *elem)
+{
+    carousel_t *carousel = (carousel_t *)elem->extended;
+    if (carousel) {
+        if (carousel->image.cache && !carousel->image.cacheLinked)
+            cacheDestroyCache(carousel->image.cache);
+
+        if (carousel->image.defaultTexture && !carousel->image.defaultTextureLinked)
+            freeImageTexture(carousel->image.defaultTexture);
+
+        if (carousel->image.overlayTexture && !carousel->image.overlayTextureLinked)
+            freeImageTexture(carousel->image.overlayTexture);
+
+        free(carousel);
+    }
+
+    free(elem);
+}
+
+static void drawSingleCover(GSTEXTURE *source, int x, int y, int w, int h, short scaled, u64 color)
+{
+    if (source && source->Mem)
+        rmDrawPixmap(source, x, y, ALIGN_CENTER, w, h, scaled, color);
+}
+
+static void drawCarouselEmptyState(theme_element_t *elem, int centerX, int centerY, int width, int height, struct menu_list *menu)
+{
+    if (!menu || !menu->item)
+        return;
+
+    // Clean, centered empty-state block using only real OPL rendering primitives.
+    // Device name, "no items" message and the refresh hint are drawn with the theme
+    // fonts/colors. No new allocations happen on this path.
+
+    u64 hintCol = GS_SETREG_RGBA(gDefaultUITextColor[0], gDefaultUITextColor[1], gDefaultUITextColor[2], 0x70);
+    int font = elem->font;
+    int propH = rmScaleY(20);
+
+    // decorative side lines to visually bound the empty region
+    rmDrawRect(centerX - ((width - 24) >> 1), centerY - 6, width - 24, 1, hintCol);
+    rmDrawRect(centerX - ((width - 36) >> 1), centerY + 26, width - 36, 1, hintCol);
+
+    // device name (localized, same source as the tab title)
+    int ty = centerY - 14;
+    fntRenderString(font, centerX, ty, ALIGN_CENTER, 0, 0, menuItemGetText(menu->item), gTheme->uiTextColor);
+
+    // "no items" message
+    ty += propH;
+    fntRenderString(font, centerX, ty, ALIGN_CENTER, 0, 0, _l(_STR_NO_ITEMS), elem->color);
+
+    // refresh hint (SELECT is the device refresh key in the OPL main screen)
+    GSTEXTURE *selIcon = thmGetTexture(SELECT_ICON);
+    if (selIcon && selIcon->Mem) {
+        rmDrawPixmap(selIcon, centerX - 30, ty + 18, ALIGN_CENTER, 16, 16, SCALING_NONE, hintCol);
+        fntRenderString(font, centerX - 6, ty + 22, ALIGN_NONE, 0, 0, _l(_STR_REFRESH), hintCol);
+    } else {
+        fntRenderString(font, centerX, ty + 22, ALIGN_CENTER, 0, 0, _l(_STR_REFRESH), hintCol);
+    }
+}
+
+static void drawCarousel(struct menu_list *menu, struct submenu_list *item, config_set_t *config, struct theme_element *elem)
+{
+    carousel_t *carousel = (carousel_t *)elem->extended;
+    if (!carousel || !carousel->image.cache)
+        return;
+
+    void *support = (menu && menu->item) ? menu->item->userdata : NULL;
+
+    int mainW = elem->width;
+    int mainH = elem->height;
+    if (mainW == DIM_UNDEF || mainW <= 0)
+        mainW = 160;
+    if (mainH == DIM_UNDEF || mainH <= 0)
+        mainH = 160;
+
+    // when aligned, posX/posY is the main cover center (ItemCover semantics);
+    // otherwise posX/posY is the top-left corner of the element region.
+    int centerX = elem->posX + ((elem->aligned) ? 0 : (mainW >> 1));
+    int centerY = elem->posY + ((elem->aligned) ? 0 : (mainH >> 1));
+
+    // Empty list: no selected item -> render a clean, centered empty state
+    // instead of an empty/broken-looking carousel frame.
+    if (!item) {
+        drawCarouselEmptyState(elem, centerX, centerY, mainW, mainH, menu);
+        return;
+    }
+
+    // scale for side covers (in percent of main cover)
+    int sideW = (mainW * carousel->sideScale) / 100;
+    int sideH = (mainH * carousel->sideScale) / 100;
+
+    u64 dimColor = GS_SETREG_RGBA(gDefaultUITextColor[0], gDefaultUITextColor[1], gDefaultUITextColor[2], 0x60);
+
+    // far side covers first, then near, then main on top
+    submenu_list_t *cur = item;
+    int i;
+
+    for (i = carousel->neighbors; i > 0; i--) {
+        submenu_list_t *nb = cur;
+        for (int k = i; k > 0 && nb; k--)
+            nb = nb->prev;
+        if (nb) {
+            GSTEXTURE *texture = getGameImageTexture(carousel->image.cache, support, &nb->item);
+            if (!texture || !texture->Mem) {
+                if (carousel->image.defaultTexture)
+                    texture = &carousel->image.defaultTexture->source;
+            }
+            drawSingleCover(texture, centerX - (i * carousel->spacing), centerY, sideW, sideH, elem->scaled, dimColor);
+        }
+    }
+
+    for (i = carousel->neighbors; i > 0; i--) {
+        submenu_list_t *nb = cur;
+        for (int k = i; k > 0 && nb; k--)
+            nb = nb->next;
+        if (nb) {
+            GSTEXTURE *texture = getGameImageTexture(carousel->image.cache, support, &nb->item);
+            if (!texture || !texture->Mem) {
+                if (carousel->image.defaultTexture)
+                    texture = &carousel->image.defaultTexture->source;
+            }
+            drawSingleCover(texture, centerX + (i * carousel->spacing), centerY, sideW, sideH, elem->scaled, dimColor);
+        }
+    }
+
+    // main cover
+    GSTEXTURE *texture = getGameImageTexture(carousel->image.cache, support, &item->item);
+    // fall back to the themed default cover while the artwork is loading, or when
+    // the game has no art at all (same policy as the side covers)
+    if (!texture || !texture->Mem) {
+        if (carousel->image.defaultTexture)
+            texture = &carousel->image.defaultTexture->source;
+    }
+
+    if (texture && texture->Mem) {
+
+        int posX = centerX - (mainW >> 1);
+        int posY = centerY - (mainH >> 1);
+
+        // glow behind the cover
+        rmDrawRectVGrad(posX - 6, posY - 6, mainW + 12, mainH + 12,
+                        (u8[]){0x10, 0x28, 0x3C}, (u8[]){0x04, 0x08, 0x10}, 0x30);
+
+        rmDrawPixmap(texture, centerX, centerY, ALIGN_CENTER, mainW, mainH, elem->scaled, gDefaultCol);
+
+        // neon frame
+        rmDrawFrame(posX, posY, mainW, mainH, 2, 14, gTheme->selTextColor);
+        rmDrawRectOutline(posX - 2, posY - 2, mainW + 4, mainH + 4, 1,
+                          GS_SETREG_RGBA(gDefaultSelTextColor[0], gDefaultSelTextColor[1], gDefaultSelTextColor[2], 0x28));
+    }
+}
+
+static void initCarousel(const char *themePath, config_set_t *themeConfig, theme_t *theme, theme_element_t *elem, const char *name)
+{
+    carousel_t *carousel = (carousel_t *)malloc(sizeof(carousel_t));
+
+    char elemProp[64];
+
+    int neighbors = 1;
+    int spacing = 80;
+    int sideScale = 45;
+
+    snprintf(elemProp, sizeof(elemProp), "%s_neighbors", name);
+    configGetInt(themeConfig, elemProp, &neighbors);
+    snprintf(elemProp, sizeof(elemProp), "%s_spacing", name);
+    configGetInt(themeConfig, elemProp, &spacing);
+    snprintf(elemProp, sizeof(elemProp), "%s_side_scale", name);
+    configGetInt(themeConfig, elemProp, &sideScale);
+
+    mutable_image_t *image = initMutableImage(themePath, themeConfig, theme, name, ELEM_TYPE_GAME_IMAGE, "COV", 10, "cover", NULL);
+
+    carousel->neighbors = neighbors;
+    carousel->spacing = spacing;
+    carousel->sideScale = sideScale;
+    // copy image (heap-allocated inside) into the carousel struct
+    carousel->image = *image;
+    free(image);
+
+    elem->extended = carousel;
+    elem->endElem = &endCarousel;
+
+    if (carousel->image.cache)
+        elem->drawElem = &drawCarousel;
+    else
+        LOG("THEMES Carousel %s: NO pattern, elem disabled !!\n", name);
+}
+
+// SelectorBar //////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+static int menuHeadToTail(struct menu_list *menu)
+{
+    int count = 0;
+    while (menu) {
+        if (menu->item->visible)
+            count++;
+        menu = menu->next;
+    }
+
+    return count;
+}
+
+static void drawSelectorBar(struct menu_list *menu, struct submenu_list *item, config_set_t *config, struct theme_element *elem)
+{
+    if (!menu)
+        return;
+
+    // find the head of the device list
+    struct menu_list *head = menu;
+    while (head->prev)
+        head = head->prev;
+
+    int count = menuHeadToTail(head);
+    if (count <= 0)
+        return;
+
+    int posX = elem->posX;
+    int posY = elem->posY;
+    if (elem->aligned) {
+        posX -= elem->width >> 1;
+        posY -= elem->height >> 1;
+    }
+
+    int slotW = elem->width / count;
+    if (slotW < 40)
+        slotW = 40;
+    // keep the dock compact: never stretch a single tile to the full bar width
+    if (slotW > (elem->width >> 1))
+        slotW = (elem->width >> 1);
+    if (slotW < 30)
+        slotW = 30;
+
+    // center the whole row when enough devices exist
+    int rowW = count * slotW;
+    if (rowW > elem->width)
+        rowW = elem->width;
+    posX += (elem->width - rowW) >> 1;
+
+    int i = 0;
+
+    struct menu_list *it = head;
+    while (it) {
+        if (it->item->visible) {
+            int selected = (it == menu);
+            int x = posX + (i * slotW);
+
+            // tile background (pill only around the tile area, not the full slot)
+            int sel = selected;
+            if (sel) {
+                rmDrawRectVGrad(x + 2, posY + 2, slotW - 4, elem->height - 4,
+                                (u8[]){0x0E, 0x22, 0x38}, (u8[]){0x04, 0x08, 0x10}, 0x60);
+                rmDrawFrame(x + 2, posY + 2, slotW - 4, elem->height - 4, 1, 10, gTheme->selTextColor);
+            } else
+                rmDrawRect(x + 2, posY + 2, slotW - 4, elem->height - 4,
+                           GS_SETREG_RGBA(0x10, 0x14, 0x1C, 0x40));
+
+            // status dot based on real device state
+            item_list_t *support = (item_list_t *)it->item->userdata;
+            int ready = 0;
+            if (support)
+                ready = support->enabled;
+
+            int dotX = x + slotW - 12;
+            int dotY = posY + 8;
+            rmDrawRect(dotX, dotY, 5, 5,
+                       ready ? GS_SETREG_RGBA(0x00, 0xE8, 0x9A, 0x90)
+                             : GS_SETREG_RGBA(0x40, 0x48, 0x54, 0x70));
+
+            // device icon (centered in the tile)
+            GSTEXTURE *iconTex = thmGetTexture(it->item->icon_id);
+            if (iconTex && iconTex->Mem && iconTex->Width > 0) {
+                int iconW = 22;
+                int iconH = (iconTex->Height * iconW) / iconTex->Width;
+                if (iconH > elem->height - 8)
+                    iconH = elem->height - 8;
+                rmDrawPixmap(iconTex, x + (slotW >> 1), posY + 6, ALIGN_CENTER, iconW, iconH, elem->scaled,
+                             selected ? gDefaultCol : GS_SETREG_RGBA(gDefaultUITextColor[0], gDefaultUITextColor[1], gDefaultUITextColor[2], 0x80));
+            }
+
+            i++;
+        }
+        it = it->next;
+    }
+}
+
+static void initSelectorBar(const char *themePath, config_set_t *themeConfig, theme_t *theme, theme_element_t *elem, const char *name)
+{
+    elem->drawElem = &drawSelectorBar;
+}
+
+// StatusBar ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+static void drawStatusBar(struct menu_list *menu, struct submenu_list *item, config_set_t *config, struct theme_element *elem)
+{
+    if (!menu)
+        return;
+
+    item_list_t *support = (item_list_t *)menu->item->userdata;
+    if (!support)
+        return;
+
+    // Report the real availability state of the current device only. The device
+    // name itself already lives in the tab title (MenuText); repeating it here
+    // caused duplicate/misplaced text, so only the status word is drawn.
+    int ready = support->enabled;
+
+    const char *status;
+    if (support->mode == ETH_MODE)
+        status = ready ? "ONLINE" : "OFFLINE";
+    else
+        status = ready ? "READY" : "STANDBY";
+
+    int posX = elem->posX;
+    int posY = elem->posY;
+
+    int w = rmUnScaleX(fntCalcDimensions(elem->font, status));
+    if (elem->aligned)
+        posX -= w >> 1;
+
+    // small accent bullet + status word
+    rmDrawRect(posX - 10, posY + 4, 4, 4, ready ? GS_SETREG_RGBA(0x00, 0xE8, 0x9A, 0x90) : elem->color);
+    fntRenderString(elem->font, posX, posY, ALIGN_NONE, 0, 0, status,
+                    ready ? gTheme->selTextColor : elem->color);
+}
+
+static void initStatusBar(const char *themePath, config_set_t *themeConfig, theme_t *theme, theme_element_t *elem, const char *name)
+{
+    elem->drawElem = &drawStatusBar;
+}
+
+// Frame ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+static void drawFrame(struct menu_list *menu, struct submenu_list *item, config_set_t *config, struct theme_element *elem)
+{
+    frame_t *frame = (frame_t *)elem->extended;
+
+    int posX = elem->posX;
+    int posY = elem->posY;
+    if (elem->aligned) {
+        posX -= elem->width >> 1;
+        posY -= elem->height >> 1;
+    }
+
+    rmDrawFrame(posX, posY, elem->width, elem->height, frame->thickness, frame->size, elem->color);
+}
+
+static void initFrame(const char *themePath, config_set_t *themeConfig, theme_t *theme, theme_element_t *elem, const char *name)
+{
+    char elemProp[64];
+    int thickness = 2;
+    int size = 18;
+    unsigned char color[3] = {0xE4, 0xEC, 0xF8};
+
+    snprintf(elemProp, sizeof(elemProp), "%s_thickness", name);
+    configGetInt(themeConfig, elemProp, &thickness);
+    snprintf(elemProp, sizeof(elemProp), "%s_size", name);
+    configGetInt(themeConfig, elemProp, &size);
+    snprintf(elemProp, sizeof(elemProp), "%s_color", name);
+    configGetColor(themeConfig, elemProp, color);
+
+    frame_t *frame = (frame_t *)malloc(sizeof(frame_t));
+    frame->thickness = thickness;
+    frame->size = size;
+
+    elem->extended = frame;
+    elem->color = GS_SETREG_RGBA(color[0], color[1], color[2], 0x80);
+    elem->drawElem = &drawFrame;
 }
 
 static void drawItemText(struct menu_list *menu, struct submenu_list *item, config_set_t *config, struct theme_element *elem)
@@ -1084,6 +1466,18 @@ static int addGUIElem(const char *themePath, config_set_t *themeConfig, theme_t 
             } else if (!strcmp(elementsType[ELEM_TYPE_BDM_INDEX], type)) {
                 elem = initBasic(themePath, themeConfig, theme, name, ELEM_TYPE_BDM_INDEX, screenWidth >> 1, 355, ALIGN_CENTER, DIM_UNDEF, DIM_UNDEF, SCALING_RATIO, gDefaultCol, theme->fonts[0]);
                 elem->drawElem = &drawBDMIndex;
+            } else if (!strcmp(elementsType[ELEM_TYPE_CAROUSEL], type)) {
+                elem = initBasic(themePath, themeConfig, theme, name, ELEM_TYPE_CAROUSEL, screenWidth >> 1, 190, ALIGN_CENTER, 176, 176, SCALING_RATIO, gDefaultCol, theme->fonts[0]);
+                initCarousel(themePath, themeConfig, theme, elem, name);
+            } else if (!strcmp(elementsType[ELEM_TYPE_SELECTOR_BAR], type)) {
+                elem = initBasic(themePath, themeConfig, theme, name, ELEM_TYPE_SELECTOR_BAR, screenWidth >> 1, screenHeight - 30, ALIGN_CENTER, 560, 48, SCALING_RATIO, theme->textColor, theme->fonts[0]);
+                initSelectorBar(themePath, themeConfig, theme, elem, name);
+            } else if (!strcmp(elementsType[ELEM_TYPE_STATUS_BAR], type)) {
+                elem = initBasic(themePath, themeConfig, theme, name, ELEM_TYPE_STATUS_BAR, 24, 26, ALIGN_NONE, DIM_UNDEF, DIM_UNDEF, SCALING_RATIO, theme->uiTextColor, theme->fonts[0]);
+                initStatusBar(themePath, themeConfig, theme, elem, name);
+            } else if (!strcmp(elementsType[ELEM_TYPE_FRAME], type)) {
+                elem = initBasic(themePath, themeConfig, theme, name, ELEM_TYPE_FRAME, 0, 0, ALIGN_NONE, DIM_UNDEF, DIM_UNDEF, SCALING_RATIO, gDefaultCol, theme->fonts[0]);
+                initFrame(themePath, themeConfig, theme, elem, name);
             }
 
             if (elem) {

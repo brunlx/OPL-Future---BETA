@@ -459,6 +459,69 @@ void rmDrawLine(int x1, int y1, int x2, int y2, u64 color)
     order++;
 }
 
+void rmDrawRectOutline(int x, int y, int w, int h, int thickness, u64 color)
+{
+    if (thickness < 1)
+        thickness = 1;
+
+    rmDrawRect(x, y, w, thickness, color);
+    rmDrawRect(x, y + h - thickness, w, thickness, color);
+    rmDrawRect(x, y, thickness, h, color);
+    rmDrawRect(x + w - thickness, y, thickness, h, color);
+}
+
+void rmDrawFrame(int x, int y, int w, int h, int thickness, int size, u64 color)
+{
+    if (thickness < 1)
+        thickness = 1;
+    if (size < thickness * 2)
+        size = thickness * 2;
+    if (size > w / 2)
+        size = w / 2;
+    if (size > h / 2)
+        size = h / 2;
+
+    // top-left
+    rmDrawRect(x, y, size, thickness, color);
+    rmDrawRect(x, y, thickness, size, color);
+    // top-right
+    rmDrawRect(x + w - size, y, size, thickness, color);
+    rmDrawRect(x + w - thickness, y, thickness, size, color);
+    // bottom-left
+    rmDrawRect(x, y + h - thickness, size, thickness, color);
+    rmDrawRect(x, y + h - size, thickness, size, color);
+    // bottom-right
+    rmDrawRect(x + w - size, y + h - thickness, size, thickness, color);
+    rmDrawRect(x + w - thickness, y + h - size, thickness, size, color);
+}
+
+void rmDrawRectVGrad(int x, int y, int w, int h, const u8 *topRGB, const u8 *bottomRGB, u8 alpha)
+{
+    int steps = 8;
+    if (steps < 1)
+        steps = 1;
+    if (h < 4) // fall back to a flat fill
+    {
+        rmDrawRect(x, y, w, h, GS_SETREG_RGBA(topRGB[0], topRGB[1], topRGB[2], alpha));
+        return;
+    }
+
+    int stepH = h / steps;
+    // Gradient between the two colors (smooth linear interpolation)
+    int yPos = y;
+    for (int i = 0; i < steps; i++) {
+        float t = (steps == 1) ? 0.0f : (float)i / (float)(steps - 1);
+        u8 r = topRGB[0] + (u8)((float)(bottomRGB[0] - topRGB[0]) * t);
+        u8 g = topRGB[1] + (u8)((float)(bottomRGB[1] - topRGB[1]) * t);
+        u8 b = topRGB[2] + (u8)((float)(bottomRGB[2] - topRGB[2]) * t);
+        rmDrawRect(x, yPos, w, stepH, GS_SETREG_RGBA(r, g, b, alpha));
+        yPos += stepH;
+    }
+    // Draw the remainder height, if any is left over
+    if (yPos < y + h)
+        rmDrawRect(x, yPos, w, y + h - yPos, GS_SETREG_RGBA(bottomRGB[0], bottomRGB[1], bottomRGB[2], alpha));
+}
+
 void rmSetDisplayOffset(int x, int y)
 {
     gsKit_set_display_offset(gsGlobal, x * rm_mode_table[vmode].VCK, y);
