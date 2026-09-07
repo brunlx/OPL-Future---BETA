@@ -1,170 +1,71 @@
-# OPL Refactored - Continue Instructions
+# OPL FUTURE — Continuar O Projeto
 
-## Objective
-Continue the OPL Refactored project build and release process from the current state.
+Instruções para continuar o projeto **OPL FUTURE (OPL Refatorado BETA)** a partir
+do estado atual do repositório.
 
-## State as of 2026-09-05
+## Estado Atual (2026-09-06)
 
-### Current Phase
-Release preparation and validation - finalizing for distribution
+- **Fase concluída**: Fases 1–3 (auditoria, correções críticas, redesign do
+  frontend FUTURE e correções visuais de hardware-feedback).
+- **Build**: ✅ Funcional. Toolchain completa em `/usr/local/ps2dev`
+  (`mips64r5900el-ps2-elf-gcc 15.2.0`, `ps2-packer`, SDK IOP/EE).
+- **ELFs gerados**: `opl.elf` (~10,3 MB), `opl_stripped.elf` (~3,2 MB),
+  `OPNPS2LD.ELF` (~1,3 MB, empacotado via `make` — BUG-003 corrigido).
+- **Teste em PS2 físico**: ⏳ Ainda não realizado (ver `OPL_FUTURE_TEST_PLAN.md`).
 
-### Last Updated
-AI_PROGRESS.md, AI_CHECKPOINT.md, FINAL_AUDIT.md generated
-
-### Files Already Analyzed and Fixed
-
-1. **sound.c** (CRITICAL FIX):
-   - Fixed sfxInit loop variable conflict
-   - File-scope `int i = 1` shared between sfxInitDefaults() and sfxInit()
-   - All 8 sound effects now load correctly
-
-2. **Makefile** (HIGH PRIORITY FIXED):
-   - PADEMU ?= 0 (was ?= 1) - disables pad emulator by default
-   - Removed -O2 from EE_CFLAGS when not debugging
-   - Added proper linking dependency rules
-
-3. **opl.c** (MEDIUM FIX):
-   - Removed redundant configGetStat declaration
-
-### Files Yet to Analyze (~25 source files)
-- animation.c, appsupport.c, atlas.c, bdmsupport.c, cheatman.c, debug.c, dia.c, dialogs.c, ethsupport.c, fntsys.c, hdd.c, hddsupport.c, httpclient.c, ioman.c, ioprp.c, lang_internal.c, lz4.c, menusys.c, nbns.c, OSDHistory.c, ps2cnf.c, renderman.c, supportbase.c, system.c (partial), texcache.c, textures.c, themes.c, vmc_groups.c, xparam.c, zso.c
-
-### Build Status
-- Makefile is configured and valid
-- Cannot complete full build without PS2SDK (no ps2-gcc, no linking libraries)
-- Minimal PS2SDK available at /home/bruno/ps2sdk_minimal (has bin2c and headers)
-- Language compilation works (python3 lang_compiler.py)
-
-### Documentation Generated
-- AI_PROGRESS.md - Full phase status and progress tracking
-- AI_CHECKPOINT.md - Current state, analyzed files, fixed bugs, risks
-- FINAL_AUDIT.md - Complete audit documentation with all findings
-
-## How to Continue
-
-### If PS2SDK Becomes Available
-
-1. **Set up PS2SDK**:
-   - Install full PS2SDK with cross-compiler (ps2-gcc)
-   - Ensure all libraries are available: libgskit, libdmakit, libfileXio, etc.
-   - Set PS2SDK environment variable
-
-2. **Build the project**:
-   ```bash
-   cd /home/bruno/Documentos/projeto-opl/OPL-Refactored
-   make clean
-   make all
-   ```
-
-3. **Verify build**:
-   - Check EE core compiles: ee_core/ee_core.elf
-   - Check IOP modules compile: modules/iopcore/
-   - Generate OPL.ELF
-   - Validate ELF format: file, size, nm, readelf
-
-4. **Run on PS2**:
-   - Copy artifacts to PS2 via uLaunchELF
-   - Test: boot, game loading, USB HDD, SMB, controllers, video modes
-   - Test all 28 languages
-   - Test sound effects and BGM
-
-### Without PS2SDK (Current State)
-
-1. **Code audit verification**:
-   - Review AI_CHECKPOINT.md for analyzed files
-   - Review FINAL_AUDIT.md for complete findings
-   - Manually check remaining source files for bugs
-
-2. **Language compilation**:
-   ```bash
-   cd /home/bruno/Documentos/projeto-opl/OPL-Refactored
-   python3 lang_compiler.py --make_lng --base lng_tmpl/_base.yml --translation lng_src/English.yml lng/lang_English.lng
-   ```
-   - Generates 28 language files in lng/
-
-3. **Asset conversion**:
-   - bin2c converts gfx/*.png to C arrays
-   - bin2c converts audio/*.adp to C arrays
-
-4. **Documentation review**:
-   - Read AI_PROGRESS.md for current phase
-   - Read AI_CHECKPOINT.md for state and risks
-   - Read FINAL_AUDIT.md for complete audit
-
-### Files to Maintain/Update
-
-#### Always keep these files synchronized:
-- AI_PROGRESS.md - Track current phase and progress
-- AI_CHECKPOINT.md - Track state, analyzed files, bugs, risks
-- FINAL_AUDIT.md - Complete audit documentation
-
-#### Regenerate when needed:
-- Language files: `python3 lang_compiler.py ...`
-- PNG C arrays: `make` or `bin2c` individually
-- Build artifacts: `make clean && make all` (when PS2SDK available)
-
-### Known Issues (Documented)
-
-1. **Cannot build without PS2SDK**: Full toolchain required for linking
-2. **Unanalyzed source files**: ~25 source files not fully examined for all bug types
-3. **No hardware testing**: REAL PS2 testing not possible in current environment
-4. **Missing libraries**: libgskit, libdmakit, libfileXio, etc. not available
-
-### Success Criteria (When PS2SDK Available)
-
-Build is considered complete when:
-1. ✅ make clean followed by make all executes without errors
-2. ✅ EE core (ee_core/ee_core.elf) compiles and links successfully
-3. ✅ IOP modules compile successfully
-4. ✅ OPL.ELF generated and validated (file shows PlayStation 2 ELF)
-5. ✅ All 28 languages compile from YAML templates
-6. ✅ PNG and ADPCM assets converted to C arrays
-7. ✅ No new warnings introduced (existing warnings from before fixes are acceptable)
-8. ✅ Build reproducible (same version string generated each time)
-9. ✅ ELF validates as MIPS PS2 executable
-10. ✅ IRX modules load correctly on target hardware
-
-### Limitations (Current Environment)
-
-- **N/A VALIDADO EM HARDWARE**: Cannot test on real PS2
-- **BUILD INCOMPLETO**: Cannot complete full build without PS2SDK
-- **AUDIT INCOMPLETO**: ~25 source files not fully analyzed
-
-### Next Immediate Steps
-
-1. **If PS2SDK available**: Run `make clean && make all` and verify
-2. **If PS2SDK not available**: Review documentation files generated
-3. **Always**: Keep AI_PROGRESS.md, AI_CHECKPOINT.md, FINAL_AUDIT.md synchronized
-4. **Always**: Document any new findings in AI_CHECKPOINT.md
-
-### Commands to Run (When PS2SDK Available)
+## Comandos de Build
 
 ```bash
-# Full clean build
-make clean
-make all
+# Build completo (frontend + EE core + módulos IOP + idiomas + empacotamento)
+make all PS2_PACKER_DIR=/usr/local/ps2dev/bin
 
-# Or specific targets
-make debug        # Build with debug mode
-make release      # Build release version
-make clean        # Clean build artifacts
+# Sem empacotamento (gera apenas opl.elf)
+make all NOT_PACKED=1 PS2_PACKER_DIR=/usr/local/ps2dev/bin
 
-# Language compilation
-python3 lang_compiler.py --make_lng --base lng_tmpl/_base.yml --translation lng_src/English.yml lng/lang_English.lng
-
-# Version check
-make oplversion
-
-# Format check (requires clang-format)
-make format-check
-make format
+# Variantes / debug
+make release
+make debug
+make clean && make all
 ```
 
-### Recovery Point
+> O alvo de empacotamento usa caminhos absolutos (`$(CURDIR)/$<` e `$(CURDIR)/$@`),
+> corrigindo o bug original do `cd $(PS2_PACKER_DIR)` (BUG-003).
 
-If work is interrupted, restore state from:
-- AI_CHECKPOINT.md - Current state and progress
-- Git repository: /home/bruno/Documentos/projeto-opl/OPL-Refactored/.git/
-- AI_PROGRESS.md - Phase tracking
+## Validação
 
-The git repository is clean with commit e156468 as the base state.
+```bash
+file OPNPS2LD.ELF        # ELF 32-bit LSB executable, MIPS, static, no section header
+sha256sum OPNPS2LD.ELF
+make oplversion          # exibe a versão embutida no ELF
+make format-check        # verificação de formatação (requer clang-format)
+```
+
+## Próximos Passos
+
+1. **Teste de hardware** — seguir `OPL_FUTURE_TEST_PLAN.md` (BOOT, NAV, GAMES,
+   DEV, UI, VIDEO, STAB) em um PS2 real e registrar PASS/FAIL por item.
+2. **Validação visual FUTURE** — checklist da seção 7 de
+   `OPL_FUTURE_QA_REPORT.md` (BUG-101 a 104).
+3. **Auditoria dos arquivos restantes** — ~25 fontes já auditadas
+   estaticamente; revisar qualquer alteração nova.
+4. **Atualização de releases** — publicar novos ELFs na aba Releases.
+
+## Recuperação / Ponto de Restauração
+
+- Estado do git: branch `main`, sincronizado com `origin` do repositório
+  `brunlx/OPL-Future---BETA`.
+- Documentos de referência: `AI_PROGRESS.md`, `OPL_FUTURE_QA_REPORT.md`,
+  `OPL_FUTURE_TEST_PLAN.md`, `OPL_FUTURE_UI.md`.
+- Backup da pré-limpeza do repositório: espelho em `/tmp/opencode/OPL-backup.git`
+  (não comitar).
+
+## Notas
+
+- Artefatos de build **não são rastreados no git** (ver `.gitignore`); um clone
+  limpo regenera tudo via `make`.
+- `download_lng.sh` / `download_lwNBD.sh` / `download_cfla.sh` buscam fontes de
+  idiomas, lwNBD e clang-format quando ausentes (rede necessária só na 1ª
+  compilação).
+- Alterações "Do Not Revert": PADEMU `?= 0`, correção do laço de som em
+  `sound.c`, remoção da declaração redundante de `configGetStat` em `opl.c`,
+  `-O2` fora do caminho não-debug.

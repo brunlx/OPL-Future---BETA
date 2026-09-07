@@ -8,7 +8,39 @@
 
 === Changelog ===
 
-==== Version 0.9.3 ====
+==== OPL FUTURE - BETA (fork) ====
+
+===== Version 1.2.0-Beta (fork refatorado) =====
+FRONTEND:
+
+* Novos elementos de tema: CAROUSEL, SELECTOR_BAR, STATUS_BAR e FRAME (src/themes.c, include/themes.h).
+* Tema "FUTURE" data-driven (misc/conf_theme_OPL.cfg): fundo navy profundo, acentos ciano neon (#00D8FF), layout logico 640x480.
+* Carousel de capas com brilho em gradiente, moldura neon e covers vizinhos escalados.
+* Dock inferior de dispositivos (SelectorBar) com pills, icones e dots de status.
+* Barra HUD de status no topo (StatusBar) - READY/STANDBY/ONLINE/OFFLINE.
+* Moldura decorativa neon (Frame) com cantoneiras e tint translucido.
+* Lista de jogos renovada: barra de selecao com gradiente + acento ciano.
+* Empty-state dedicado no carousel quando o dispositivo nao tem jogos (BUG-101).
+* Fallback da capa padrao no cover central durante carregamento de arte (BUG-102).
+* StatusBar compacta sem nome de dispositivo duplicado (BUG-103).
+* SelectorBar com tiles icone + dot, dimensoes saneadas (BUG-104).
+
+CORE:
+
+* Correcao critica do carregamento de efeitos sonoros (laco compartilhado em sfxInit).
+* Guarda contra divisao por zero em SelectorBar (texturas degeneradas) (BUG-001).
+* Guarda contra leitura fora dos limites em StatusBar (BUG-002).
+* PADEMU desabilitado por padrao (?= 0) - menos modulos IOP carregados.
+* -O2 removido do caminho nao-debug do Makefile.
+* Removida declaracao redundante de configGetStat em opl.c.
+
+BUILD:
+
+* Alvo de empacotamento (ps2-packer) corrigido com caminhos absolutos (BUG-003).
+* Build completo validado: opl.elf -> opl_stripped.elf -> OPNPS2LD.ELF via make.
+* Artefatos de build nao sao mais rastreados no git (.gitignore).
+
+===== Version 0.9.3 (upstream) =====
 CORE:
 
 * New RDB-based DECI2 Debugging System.
